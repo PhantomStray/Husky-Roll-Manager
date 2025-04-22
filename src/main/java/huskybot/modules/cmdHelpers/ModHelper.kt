@@ -11,6 +11,7 @@ import huskybot.modules.logging.ModlogManager.logWarn
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.Member
+import net.dv8tion.jda.api.entities.Role
 import net.dv8tion.jda.api.entities.User
 import java.awt.Color
 import java.time.Duration
@@ -168,116 +169,6 @@ object ModHelper {
     }
 
     /**
-     * Helper method for warning a user, which returns the result of the warning.
-     * @param ctx Context object
-     * @param member Member that is to be warned
-     * @param reason Reason for the warning, will be logged if modmail is enabled
-     * @return Result of the warning attempt
-     */
-    fun tryWarn(ctx: Context, member: Member, reason: String) : CompletableFuture<Result> {
-
-        val self = ctx.guild?.selfMember
-        val moderator = ctx.member
-        val future = CompletableFuture.supplyAsync {
-
-            /* Pre-Run Checks */
-
-            if(!self?.hasPermission(Permission.KICK_MEMBERS)!!) { //permission to kick and permission to warn are one in the same
-                return@supplyAsync Result.BOT_NO_PERMS       //Bot lacks kick permission
-            }
-
-            if(!moderator.hasPermission(Permission.KICK_MEMBERS)) {
-                return@supplyAsync Result.USER_NO_PERMS      //Moderator lacks kick permission
-            }
-
-            if(!self.canInteract(member)) {
-                return@supplyAsync Result.MEMBER_TOO_HIGH    //Member is above the user or bot
-            }
-
-            /* Warn the User */
-
-            if (!member.user.isBot) {
-                ctx.jda.openPrivateChannelById(member.user.idLong)
-                    .queue{channel ->
-                        channel.sendMessageEmbeds(
-                            EmbedBuilder()
-                                .setTitle("You have been warned for")
-                                .setDescription(reason)
-                                .setColor(Color.red)
-                                .build()
-                        )
-                    }
-            }
-
-            /* Increment and get the Warn Count */
-            Database.updateWarnCount(ctx.guild.idLong, member.idLong, true)
-            val warnCount = Database.getWarnCount(ctx.guild.idLong, member.idLong)
-
-            /* Log the action in the modlog */
-            logWarn(ctx, ctx.member.user, member.user, reason, warnCount)
-
-            return@supplyAsync Result.SUCCESS
-        }
-
-        return future
-    }
-
-    /**
-     * Helper method for pardoning a user, which returns the result of the pardon.
-     * @param ctx Context object
-     * @param member Member that is to be pardoned
-     * @param reason Reason for the pardon, will be logged if modmail is enabled
-     * @return Result of the pardon attempt
-     */
-    fun tryPardon(ctx: Context, member: Member, reason: String) : CompletableFuture<Result> {
-
-        val self = ctx.guild?.selfMember
-        val moderator = ctx.member
-        val future = CompletableFuture.supplyAsync {
-
-            /* Pre-Run Checks */
-
-            if(!self?.hasPermission(Permission.KICK_MEMBERS)!!) { //permission to kick and permission to warn are one in the same
-                return@supplyAsync Result.BOT_NO_PERMS       //Bot lacks kick permission
-            }
-
-            if(!moderator.hasPermission(Permission.KICK_MEMBERS)) {
-                return@supplyAsync Result.USER_NO_PERMS      //Moderator lacks kick permission
-            }
-
-            if(!self.canInteract(member)) {
-                return@supplyAsync Result.MEMBER_TOO_HIGH    //Member is above the user or bot
-            }
-
-            /* Pardon the User */
-
-            if (!member.user.isBot) {
-                ctx.jda.openPrivateChannelById(member.user.idLong)
-                    .queue{channel ->
-                        channel.sendMessageEmbeds(
-                            EmbedBuilder()
-                                .setTitle("You have been pardoned for")
-                                .setDescription(reason)
-                                .setColor(Color.red)
-                                .build()
-                        )
-                    }
-            }
-
-            /* Reduce and get the Warn Count */
-            Database.updateWarnCount(ctx.guild.idLong, member.idLong, false)
-            val warnCount = Database.getWarnCount(ctx.guild.idLong, member.idLong)
-
-            /* Log the action in the modlog */
-            logPardon(ctx, ctx.member.user, member.user, reason, warnCount)
-
-            return@supplyAsync Result.SUCCESS
-        }
-
-        return future
-    }
-
-    /**
      * Helper method for timing out a user, which returns the result of the timeout.
      * @param ctx Context object
      * @param member Member that is to be timed out
@@ -285,7 +176,7 @@ object ModHelper {
      * @param duration How long the timeout will last, can be null if not used
      * @return Result of the timeout attempt
      */
-     fun tryTimeout(ctx: Context, member: Member, reason: String, duration: Duration) : CompletableFuture<Result> {
+     fun tryAddrole(ctx: Context, member: Member, role: Role) : CompletableFuture<Result> {
 
         val self = ctx.guild?.selfMember
         val moderator = ctx.member
@@ -294,28 +185,19 @@ object ModHelper {
             /* Pre-Run Checks */
 
             if(!self?.hasPermission(Permission.MODERATE_MEMBERS)!!) {
-                return@supplyAsync Result.BOT_NO_PERMS       //Bot lacks kick permission
+                return@supplyAsync Result.BOT_NO_PERMS       //Bot lacks modify permission
             }
 
             if(!moderator.hasPermission(Permission.MODERATE_MEMBERS)) {
-                return@supplyAsync Result.USER_NO_PERMS      //Moderator lacks kick permission
+                return@supplyAsync Result.USER_NO_PERMS      //Moderator lacks modify permission
             }
 
             if(!self.canInteract(member) || member.hasPermission(Permission.ADMINISTRATOR)) {
                 return@supplyAsync Result.MEMBER_TOO_HIGH    //Member is above the user or bot
             }
 
-            if(duration.toDays() > 28) {
-                return@supplyAsync Result.ERROR              //Timeout is greater than 28 days
-            }
-
             /* Timeout the User */
-            ctx.guild.timeoutFor(member, duration)
-                .reason(reason)
-                .submit()
-
-            /* Log the action in the modlog */
-            logTimeout(ctx, moderator.user, member.user, reason, duration)
+            ctx.member.roles.add(role)
 
             return@supplyAsync Result.SUCCESS
         }

@@ -31,32 +31,16 @@ class Settings : Command(ExecutionType.STANDARD) {
         val modRole = ctx.guild?.idLong?.let { Database.getModRole(it) }
         val modRoleFormatted = if (modRole != null) "<@&${modRole}>" else "Default: (Moderator)"         //Formatted to a Mention
 
-        val joinlogChannel = ctx.guild?.idLong?.let { Database.getJoinlogChannel(it) }
-        val joinlogFormatted = if (joinlogChannel != null) "<#${joinlogChannel}>" else "Disabled"
-
-        val leavelogChannel = ctx.guild?.idLong?.let { Database.getLeavelogChannel(it) }
-        val leavelogFormatted = if (leavelogChannel != null) "<#${leavelogChannel}>" else "Disabled"
-
-        val modlogChannel = ctx.guild?.idLong?.let { Database.getModlogChannel(it) }
-        val modlogFormatted = if (modlogChannel != null) "<#${modlogChannel}>" else "Disabled"
-
-        val modmailEnabled = ctx.guild?.idLong?.let { Database.getModmailState(it) }!!
-        val modmailFormatted = if (modmailEnabled) "Enabled" else "Disabled"
-
         /* Create array of message embed fields */
         val fields = arrayOf(
             MessageEmbed.Field("Admin Role", adminRoleFormatted, true),
-            MessageEmbed.Field("Mod Role", modRoleFormatted, true),
-            MessageEmbed.Field("Modlog Channel", modlogFormatted, true),
-            MessageEmbed.Field("Joinlog Channel", joinlogFormatted, true),
-            MessageEmbed.Field("Leavelog Channel", leavelogFormatted, true),
-            MessageEmbed.Field("Modmail State", modmailFormatted, true)
+            MessageEmbed.Field("Mod Role", modRoleFormatted, true)
             //MessageEmbed.Field("\u200B", "\u200B", true)
         )
 
         ctx.embed {
-            setTitle("Server Settings | ${ctx.guild.name}")
-            setThumbnail(ctx.guild.iconUrl)
+            setTitle("Server Settings | ${ctx.guild?.name}")
+            setThumbnail(ctx.guild?.iconUrl)
             setColor(Color.yellow)
             addFields(fields)
         }
